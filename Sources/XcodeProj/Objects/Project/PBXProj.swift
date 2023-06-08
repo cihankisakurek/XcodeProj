@@ -67,6 +67,21 @@ public final class PBXProj: Decodable {
         )
     }
 
+    /// Initializes the project with a path to the pbxproj file.
+    ///
+    /// - Parameters:
+    ///   - data: Data represantation of a pbxproj file.
+    public convenience init(data: Data) throws {
+        let pbxproj: PBXProj = try PBXProj.createPBXProj(path: path)
+        self.init(
+            rootObject: pbxproj.rootObject,
+            objectVersion: pbxproj.objectVersion,
+            archiveVersion: pbxproj.archiveVersion,
+            classes: pbxproj.classes,
+            objects: pbxproj.objects
+        )
+    }
+
     private init(
         rootObject: PBXProject? = nil,
         objectVersion: UInt = Xcode.LastKnown.objectVersion,
@@ -140,6 +155,34 @@ public final class PBXProj: Decodable {
 
     private static func readPBXProj(path: Path) throws -> (Data, [String: Any]) {
         let plistXML = try Data(contentsOf: path.url)
+        var propertyListFormat = PropertyListSerialization.PropertyListFormat.xml
+        let serialized = try PropertyListSerialization.propertyList(
+            from: plistXML,
+            options: .mutableContainersAndLeaves,
+            format: &propertyListFormat
+        )
+        // swiftlint:disable:next force_cast
+        let pbxProjDictionary = serialized as! [String: Any]
+        return (plistXML, pbxProjDictionary)
+    }
+
+    // Data override
+    private static func createPBXProj(data: Data) throws -> PBXProj {
+        let (pbxProjData, pbxProjDictionary) = try PBXProj.readPBXProj(data: data)
+        let context = ProjectDecodingContext(
+            pbxProjValueReader: { key in
+                pbxProjDictionary[key]
+            }
+        )
+
+        let plistDecoder = XcodeprojPropertyListDecoder(context: context)
+        let pbxproj: PBXProj = try plistDecoder.decode(PBXProj.self, from: pbxProjData)
+//        try pbxproj.updateProjectName(path: path)
+        return pbxproj
+    }
+
+    private static func readPBXProj(data: Data) throws -> (Data, [String: Any]) {
+        let plistXML = data
         var propertyListFormat = PropertyListSerialization.PropertyListFormat.xml
         let serialized = try PropertyListSerialization.propertyList(
             from: plistXML,
