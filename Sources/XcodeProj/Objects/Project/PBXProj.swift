@@ -72,7 +72,7 @@ public final class PBXProj: Decodable {
     /// - Parameters:
     ///   - data: Data represantation of a pbxproj file.
     public convenience init(data: Data) throws {
-        let pbxproj: PBXProj = try PBXProj.createPBXProj(path: path)
+        let pbxproj: PBXProj = try PBXProj.createPBXProj(data: data)
         self.init(
             rootObject: pbxproj.rootObject,
             objectVersion: pbxproj.objectVersion,
